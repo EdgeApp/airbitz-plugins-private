@@ -1,0 +1,26 @@
+{
+  "name": "plugins.airbitz.org",
+  "version": "2.9.8",
+  "description": "",
+  "main": "Gruntfile.js",
+  "dependencies": {
+    "grunt": "~0.4.1",
+    "grunt-combine": "~0.8.3",
+    "grunt-lineending": "~0.2.4"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-combine": "~0.8.3",
+    "grunt-downloadfile": "^0.3.2",
+    "grunt-jquerybuilder": "^0.1.5",
+    "grunt-lineending": "~0.2.4",
+    "grunt-mkdir": "^0.1.2",
+    "grunt-serve": "^0.1.6"
+  },
+  "scripts": {
+    "test": ""
+  },
+  "author": "airbitz",
+  "license": "MIT",
+  "readmeFilename": "README.md"
+}
