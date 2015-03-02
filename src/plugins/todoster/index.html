@@ -1,9 +1,107 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html ng-app="todoicus">
 <head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8">
-    <title></title>
+<meta name="description" content="A demonstration of Angular 1.2 with Animate.css" />
+  <meta charset=utf-8 />
+  <title>TODOICUS</title>
+  <link rel="stylesheet" href="//djyhxgczejc94.cloudfront.net/frameworks/bootstrap/3.0.0/themes/white-plum/bootstrap.min.css">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/2.0/animate.min.css">
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.css" />
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+  <div class="container">
+  <h1 class="page-header text-center"><i class="fa fa-magic"></i> TODOICUS</h1>
+  
+    <div class="row" style="margin-top: 40px;">
+    
+      <div ng-controller="todoCtrl" class="col-sm-6">
+        <div class="row">
+
+          <form ng-submit="addTodo(newTodo)" class="col-sm-12">
+            <input type="text" ng-model="newTodo" class="form-control" placeholder="New todo item goes here, then press Enter" focus>
+          </form>
+
+        </div>
+        
+        <div class="row">
+          
+          <div class="col-sm-12">
+            <ul class="list-group">
+              <li class="list-group-item todo-item" ng-repeat="item in DF.getStorageArray() | filter:{complete:'false'}" ng-class="{'todo-complete': item.complete}">
+                <span class="close" ng-click="DF.removeData(item.id)">&times;</span>
+                <label>
+                  <input type="checkbox" ng-model="item.complete">
+                  <span ng-bind="item.text" class="text">This is the content of the Todo</span>
+                  <span ng-bind="item.created" class="dateCreated text-success">This is the Date</span>
+                </label>
+              </li>
+            </ul>
+            <button class="btn btn-block btn-primary" ng-click="clearAll()"><i class="fa fa-times"></i> Clear All Items</button>
+          </div>
+        
+        </div>
+      
+      </div>
+
+
+
+      <div ng-controller="doneCtrl" class="col-sm-6">
+        <div class="row">
+          <h3 class="text-success col-sm-12" style="margin: 0 0 12px 0;">Completed Todos</h2>
+        </div>
+        <ul class="list-group">
+          <li class="list-group-item todo-item" ng-repeat="item in DF.getStorageArray() | filter:{complete:'true'}" ng-class="{'todo-complete': item.complete}">
+            <span class="close" ng-click="DF.removeData(item.id)">&times;</span>
+            <label>
+              <input type="checkbox" ng-model="item.complete" />
+              <span ng-bind="item.text" class="text">Things that are complete will show here.</span>
+              <span ng-bind="item.created" class="dateCreated text-success">This is the Date</span>              
+            </label>
+          </li>
+        </ul>
+      </div>
+    
+    </div>
+
+
+
+    <div ng-controller="dataCtrl" class="row" style="margin-top: 60px;">
+
+      <div class="col-sm-12">
+        <p>storage_array: {{ storage_array.length }}</p>
+        <textarea class="form-control" rows="5">{{ storage_array }}</textarea>
+      </div>
+
+    </div>
+
+
+
+
+
+  </div><!-- /.container -->
+  
+  
+
+
+
+
+  <script src="vendors/jquery-1.11.1.js" type="text/javascript"></script>
+  <script src="vendors/moment.min.js" type="text/javascript"></script>
+  <script src="vendors/angular.js" type="text/javascript"></script>
+  <script src="vendors/angular-animate.js" type="text/javascript"></script>
+
+  <script src="app.js" type="text/javascript"></script>
+  <script src="services/DataFactory.js" type="text/javascript"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
