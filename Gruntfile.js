@@ -37,13 +37,14 @@ module.exports = function (grunt) {
 				tokens: [
             { token: "//animate.css", file: "./src/plugins/todoster/css/animate.min.css" },
             { token: "//bootstrap.css", file: "./src/plugins/todoster/css/themes/white-plumb/bootstrap.min.css" },
+            { token: "//app.css", file: "./src/plugins/todoster/css/app.css" },
             { token: "//font-awesome.css", file: "./src/plugins/todoster/css/font-awesome.min.css" },
             { token: "//jquery.js", file: "./src/plugins/todoster/vendors/jquery-1.11.1.js" },
             { token: "//moment.js", file: "./src/plugins/todoster/vendors/moment.min.js" },
             { token: "//angular.js", file: "./src/plugins/todoster/vendors/angular-1.2.18.min.js" },
-            { token: "//angular-animate.js", file: "./src/plugins/todoster/vendors/angular-animate.js" },
-            { token: "//DataFactory.js", file: "./src/plugins/todoster/services/DataFactory.js" },
-            { token: "//app.js", file: "./src/plugins/todoster/app.js" }
+            { token: "//angular-animate.js", file: "./src/plugins/todoster/vendors/angular-animate.min.js" },
+            { token: "//app.js", file: "./src/plugins/todoster/app.js" },
+            { token: "//DataFactory.js", file: "./src/plugins/todoster/services/DataFactory.js" }
           ]
 			},
 			android: {
