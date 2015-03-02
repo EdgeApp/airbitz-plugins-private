@@ -34,9 +34,16 @@ module.exports = function (grunt) {
 			todoster: {
 				input: "./src/plugins/todoster/index.html",
 				output: "./build/plugin.todoster.html",
-				tokens: [ 
-            { token: "//airbitz-bridge.js", file: "./lib/js/airbitz-bridge-fake.js" },
-            { token: "//airbitz-core.js", file: "./lib/js/airbitz-core.js" }
+				tokens: [
+            { token: "//animate.css", file: "./src/plugins/todoster/css/animate.min.css" },
+            { token: "//bootstrap.css", file: "./src/plugins/todoster/css/themes/white-plumb/bootstrap.min.css" },
+            { token: "//font-awesome.css", file: "./src/plugins/todoster/css/font-awesome.min.css" },
+            { token: "//jquery.js", file: "./src/plugins/todoster/vendors/jquery-1.11.1.js" },
+            { token: "//moment.js", file: "./src/plugins/todoster/vendors/moment.min.js" },
+            { token: "//angular.js", file: "./src/plugins/todoster/vendors/angular-1.2.18.min.js" },
+            { token: "//angular-animate.js", file: "./src/plugins/todoster/vendors/angular-animate.js" },
+            { token: "//DataFactory.js", file: "./src/plugins/todoster/services/DataFactory.js" },
+            { token: "//app.js", file: "./src/plugins/todoster/app.js" }
           ]
 			},
 			android: {
