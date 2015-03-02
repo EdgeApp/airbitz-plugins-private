@@ -31,6 +31,14 @@ module.exports = function (grunt) {
 					{ token: "//qrcode.min.js", file: "./build/qrcode.min.js" }
 				]
 			},
+			todoster: {
+				input: "./src/plugins/todoster/index.html",
+				output: "./build/plugin.todoster.html",
+				tokens: [ 
+            { token: "//airbitz-bridge.js", file: "./lib/js/airbitz-bridge-fake.js" },
+            { token: "//airbitz-core.js", file: "./lib/js/airbitz-core.js" }
+          ]
+			},
 			android: {
 				input: "./src/plugins/example/ui.html",
 				output: "./build/android.plugin.example.html",
@@ -53,4 +61,5 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks("grunt-serve");
 	grunt.registerTask("default", ["mkdir", "downloadfile", "combine:test"]);
 	grunt.registerTask("android", ["mkdir", "downloadfile", "combine:android"]);
+	grunt.registerTask("todoster", ["mkdir", "combine:todoster"]);
 };
