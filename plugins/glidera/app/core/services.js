@@ -294,6 +294,16 @@
         })
     };
 
+    factory.requestImage = function() {
+      return $q(function(resolve, reject) {
+        Airbitz.core.requestImage({
+          success: resolve,
+          error: reject
+        })
+      });
+    });
+
+
     var executeBuy = function(wallet, qty, request) {
       var deferred = $q.defer(),
           requestId = request['requestId'],

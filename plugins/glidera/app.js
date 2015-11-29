@@ -110,6 +110,12 @@ run(['$rootScope', 'DataFactory', function ($rootScope, DataFactory) {
     Airbitz.currentWallet = newWallet;
     $rootScope.currentWallet = newWallet;
   });
+
+  DataFactory.requestImage().then(function(image) {
+    Airbitz.testPhotoImage = image;
+    $rootScope.testPhotoImage = image;
+  });
+
   Airbitz.core.setWalletChangeListener(function(newWallet) {
     $rootScope.$apply(function() {
       Airbitz.currentWallet = newWallet;
