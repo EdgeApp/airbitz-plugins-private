@@ -23,7 +23,17 @@
 
     function errorMap(res) {
       if (res.error) {
-        return res.error;
+        if (typeof res.error == 'string') {
+          return res.error;
+        } else if (typeof res.error == 'object') { 
+          var s = '';
+          for (var i in res.error) {
+            s += res.error[i] + '\n';
+          }
+          return s.trim();
+        } else {
+          return '';
+        }
       } else {
         return '';
       }
@@ -32,7 +42,11 @@
     function reject(res) {
       console.log(res);
       if (res.error) {
-        Airbitz.ui.showAlert('Error', res.error);
+        var errorstring = errorMap(res);
+        if (~errorstring.indexOf("Insufficient funds")) {
+          errorstring = 'Insufficient Funds. Please deposit funds via SEPA transfer';
+        }
+        Airbitz.ui.showAlert('Error', errorstring);
       } else {
         Airbitz.ui.showAlert('Error', 'An unknown error occurred.');
       }

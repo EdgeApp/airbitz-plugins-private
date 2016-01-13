@@ -1,6 +1,8 @@
 (function() {
   angular.module('app.filters', [])
     .filter('statusFilter', statusFilter)
+    .filter('progressFilter', progressFilter)
+    .filter('stateFilter', stateFilter)
     .filter('titlecase', titleCase)
     .filter('roundFiat', roundFiat)
     .filter('formatBtc', ['$filter', formatBtc])
@@ -11,6 +13,37 @@
   function statusFilter() {
     return function(status) {
       return (status) ? 'Verified' : 'Unverified';
+    };
+  }
+
+  function progressFilter() {
+    return function(userStatus) {
+      if (userStatus.tier2SetupComplete) {
+        return 'Verified';
+      } else if (userStatus.tier2TransactionVolumeRequirementComplete 
+          || userStatus.tier2AccountAgeRequirementComplete
+          || userStatus.userOowIsSetup
+          || userStatus.userSsnIsSetup) {
+        return 'In Progress';
+      } else {
+        return 'Unverified';
+      }
+    };
+  }
+
+  function stateFilter() {
+    return function(state) {
+      if (state == 'UNSUBMITTED') {
+        return 'Unsubmitted';
+      } else if (state == 'SUBMITTED') {
+        return 'Submitted';
+      } else if (state == 'VERIFIED') {
+        return 'Verified';
+      } else if (state == 'FAILED') {
+        return 'Failed';
+      } else {
+        return state;
+      }
     };
   }
 

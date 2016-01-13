@@ -3,7 +3,7 @@
 
   angular
     .module('app.dataFactory', ['app.glidera', 'app.2fa', 'app.constants', 'app.limits', 'app.constants'])
-    .factory('StatsFactory', [ '$http', 'ExchangeFactory', StatsFactory])
+    .factory('StatsFactory', [ '$http', 'ExchangeFactory', 'UserFactory', StatsFactory])
     .factory('UserFactory', [ '$q', '$filter', 'States', 'Occupations', 'ExchangeFactory', 'glideraFactory', 'TwoFactor', UserFactory])
     .factory('DataFactory', [ '$q', '$filter', 'States', 'ExchangeFactory', 'glideraFactory', 'TwoFactor', 'Prices', 'StatsFactory', DataFactory]);
 
@@ -47,6 +47,9 @@
     factory.userSetupRedirect = function() {
       return glideraFactory.userSetupRedirect(redirectUri, 'usersetup');
     };
+    factory.idVerifyRedirect = function() {
+      return glideraFactory.idVerifyRedirect(redirectUri, 'idverify');
+    };
     factory.createBankAccountUrl = function() {
       return glideraFactory.createBankAccountRedirect(redirectUri, 'bankaccount');
     };
@@ -82,10 +85,24 @@
       'userCanTransact': false,
       'userEmailIsSetup': false,
       'userBankAccountIsSetup': false,
-      'userBasicInfoIsSetup': false
+      'userBasicInfoIsSetup': false,
+      'tier1SetupComplete': false,
+      'tier2SetupComplete': false,
+      'tier2TransactionVolumeRequirementComplete': false,
+      'tier2AccountAgeRequirementComplete': false,
+      'userOowIsSetup': false,
+      'userSsnIsSetup': false,
     };
     factory.getUserAccountStatus = function() {
       return userStatus;
+    };
+
+    factory.userIdVerify = function(imageData) {
+      var d = $q.defer();
+      glideraFactory.userIdVerify(imageData, function(e, s, b) {
+        s >= 200 && s < 300?  d.resolve(b) : d.reject(b);
+      });
+      return d.promise;
     };
     factory.resendEmailVerification = function() {
       var d = $q.defer();
@@ -137,6 +154,9 @@
             account.occupation = Occupations.find(b.occupation);
             account.employerName = b.employerName;
             account.employerDescription = b.employerDescription;
+            if (!account.last4Ssn) {
+              account.last4Ssn = b.last4Ssn;
+            }
             ExchangeFactory.updateCurrency(account.country);
 
             if (b.birthDate) {
@@ -172,6 +192,7 @@
           'occupation': account.occupation ? account.occupation.id : null,
           'employerName': account.employerName,
           'employerDescription': account.employerDescription,
+          'last4Ssn': account.last4Ssn,
           'ip': '127.0.0.1'
         };
         console.log(d);
@@ -397,15 +418,20 @@
     };
     return factory;
   }
-  function StatsFactory($http, ExchangeFactory) {
+  function StatsFactory($http, ExchangeFactory, UserFactory) {
     var factory = {};
     factory.recordEvent = function(eventType, eventDictionary, btcAmount) {
       var statsKey = Airbitz.config.get('AIRBITZ_STATS_KEY');
       var network = Airbitz.config.get('SANDBOX') == 'true' ? 'testnet' : 'mainnet';
+      var acct = UserFactory.getUserAccount();
+      var string_to_hash = acct.firstName + acct.lastName + acct.last4Ssn + acct.email;
+      var userhash = sha256(string_to_hash);
+      var shortuserhash = userhash.substr(0,8)
       var s = angular.copy(eventDictionary);
       s['btc'] = btcAmount;
       s['partner'] = 'Glidera ' + ExchangeFactory.countryCode;
       s['country'] = ExchangeFactory.countryCode;
+      s['user'] = shortuserhash;
       $http({
         method: 'POST',
         url: 'https://airbitz.co/api/v1/events',
