@@ -1,0 +1,31 @@
+---
+layout: default
+---
+
+<div class="home">
+    <p>
+    Airbitz plugins are a way to include additional functionality into the
+    Airbitz Bitcoin Wallet. They are currently used to buy and sell bitcoin
+    through <a href="https://glidera.io">Glidera</a>, and purchase discounted
+    Starbucks and Target cards through <a href="https://foldapp.com">Foldapp</a>.
+    </p>
+
+    <p>
+    These pages serve as an introduction on writing your own plugins.  You only
+    need basic web development skills to build your own plugin. If you can
+    write HTML, CSS and Javascript, you can easily write a plugin and run it on
+    <a href="pages/2-adding-to-native-apps.html#android">Android</a> and 
+    <a href="pages/2-adding-to-native-apps.html#ios">iOS</a>.
+    </p>
+
+    <ul class="page-list">
+    {% for page in site.pages %}
+        <li>
+            <h2>
+                <a class="page-link" href="{{ page.url | prepend: site.baseurl }}">{{ page.title }}</a>
+            </h2>
+            <div>{{ page.description }}</div>
+        </li>
+    {% endfor %}
+    </ul>
+</div>

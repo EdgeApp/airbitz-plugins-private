@@ -1,0 +1,7 @@
+title: Airbitz Plugins
+company: Airbitz
+email: info@airbitz.co
+
+baseurl: "/plugins"
+url: "https://developer.airbitz.co"
+exclude: [node_modules]
