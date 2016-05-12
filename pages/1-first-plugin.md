@@ -155,7 +155,7 @@ For more ideas you can check out our existing plugins with [foldapp][foldapp-plu
 The [Glidera][glidera-plugin] plugin is build on top of angular, while the
 [foldapp][foldapp-plugin] plugin is using a jQuery and handlebars.
 
-When you are ready you can [add the plugin to the native apps](adding-plugins-to-native-apps.html).
+When you are ready you can [add the plugin to the native apps](2-adding-to-native-apps.html).
 
 [foldapp-plugin]: https://github.com/Airbitz/airbitz-plugins/tree/master/plugins/foldapp
 [glidera-plugin]: https://github.com/Airbitz/airbitz-plugins/tree/master/plugins/glidera
