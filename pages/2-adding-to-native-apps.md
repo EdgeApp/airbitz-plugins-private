@@ -5,8 +5,8 @@ description: "Learn how to add the plugin to the iOS and Android native apps."
 ---
 
 In order to see your plugin in Airbitz, you must modify the Native app to
-include the plugin. Those instructions are slightly different for each
-for [Android](#android) vs [iOS](#ios).
+include the plugin. Those instructions are slightly different for
+[Android](#android) vs [iOS](#ios).
 
 ## <a name="android"></a>Android
 
@@ -44,7 +44,7 @@ our plugin.
 ./gradlew buildAirbitzPlugins installDevelopDebug
 {% endhighlight bash %}
 
-Last, launch the app, login, navigate to Buy/Sell and see launch your plugin.
+Last, launch the app, login, navigate to Buy/Sell and launch your plugin.
 
 ## <a name="ios"></a>iOS
 
@@ -58,6 +58,9 @@ cat <<EOF >> mkplugin
     cp ${CURRENT_DIR}/Airbitz/Resources/plugins/myplugin.html ${SIM_DEVICES}${CURRENT_DEVICE}${SIM_APPS}${CURRENT_APP}/${APP_NAME}/
 EOF
 {% endhighlight bash %}
+
+In Xcode (or your favorite editor) open `Airbitz/Plugins/Plugins.m`.  Add your
+plugin to the `buySellPlugins` array like the following.
 
 {% highlight objc %}
 plugin = [[Plugin alloc] init];
