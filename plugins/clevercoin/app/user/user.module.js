@@ -5,7 +5,6 @@
     .module('app.user', ['app.dataFactory', 'app.constants'])
     .controller('homeController', ['$scope', '$state', '$location', 'UserFactory', homeController])
     .controller('pendingActivationController', ['$scope', '$state', 'Error', 'UserFactory', pendingActivationController])
-    .controller('activateController', ['$scope', '$state', '$stateParams', 'Error', 'UserFactory', activateController])
     .controller('dashboardController', ['$scope', '$sce', '$state', 'Error', 'DataFactory', 'UserFactory', 'Prices', dashboardController])
     .controller('signupController', ['$scope', '$state', 'Error', 'UserFactory', signupController])
     .controller('linkController', ['$scope', '$state', 'Error', 'UserFactory', linkController])
@@ -20,18 +19,14 @@
 
   function homeController($scope, $state, $location, UserFactory) {
     var d = parseParameters($location);
-    if (d.token) {
-      $state.go('activate', {'token': d.token, 'email': d.email});
-    } else {
-      if (UserFactory.isSignedIn()) {
-        if (UserFactory.isActivated()) {
-          $state.go("dashboard");
-        } else {
-          $state.go("pendingActivation");
-        }
+    if (UserFactory.isSignedIn()) {
+      if (UserFactory.isActivated()) {
+        $state.go("dashboard");
       } else {
-        $state.go("signup");
+        $state.go("pendingActivation");
       }
+    } else {
+      $state.go("signup");
     }
   }
 
@@ -53,8 +48,9 @@
   function signupController($scope, $state, Error, UserFactory) {
     Airbitz.ui.title('CleverCoin');
     $scope.account = UserFactory.getUserAccount();
+    // we have to null out the password otherwise account is linked to exchange
     if (!$scope.account.password) {
-      $scope.account.password = '';
+      $scope.account.password = null;
     }
 
     $scope.cancelSignup = function() {
@@ -65,13 +61,19 @@
       Airbitz.ui.showAlert('', 'Creating account...', {
         'showSpinner': true
       });
-      UserFactory.registerUser($scope.account.firstName, $scope.account.email, $scope.account.password).then(function() {
-        Airbitz.ui.showAlert('', 'Account created...');
+
+      UserFactory.requestLink($scope.account.email).then(function() {
+        Airbitz.ui.showAlert('', 'Account connected...');
         $state.go('pendingActivation');
       }, function(e) {
-        console.log(e);
-        var msg = 'Unable to signup at this time.\n' + Error.errorMap(e);
-        Airbitz.ui.showAlert('Error', msg);
+        UserFactory.registerUser($scope.account.firstName, $scope.account.email, $scope.account.password).then(function() {
+          Airbitz.ui.showAlert('', 'Account created...');
+          $state.go('pendingActivation');
+        }, function(e) {
+          console.log(e);
+          var msg = 'Unable to signup at this time.\n' + Error.errorMap(e);
+          Airbitz.ui.showAlert('Error', msg);
+        });
       });
     };
   }
@@ -87,30 +89,40 @@
   function pendingActivationController($scope, $state, Error, UserFactory) {
     Airbitz.ui.title('Activate account');
     $scope.account = UserFactory.getUserAccount();
-    // If we can fetch the account, we know the user has been activated
-    UserFactory.fetchAccount().then(function(account) {
+    // If we can fetch the wallets, we know the user has been activated
+    UserFactory.fetchUserAccountStatus().then(function() {
       $scope.account.isActivated = true;
-      Airbitz.core.write('account', $scope.account);
+      Airbitz.core.writeData('account', $scope.account);
       $state.go("dashboard");
     });
-    $scope.changeEmail = function() {
-      Airbitz.core.clearData();
-      $state.go("signup");
+    $scope.toDashboard = function() {
+      Airbitz.ui.showAlert('', 'Checking account...', {
+        'showSpinner': true
+      });
+      UserFactory.fetchUserAccountStatus().then(function() {
+        $scope.account.isActivated = true;
+        Airbitz.core.writeData('account', $scope.account);
+        $state.go("dashboard");
+        Airbitz.ui.hideAlert();
+      }, function() {
+        Airbitz.ui.showAlert('', 'Account has not been activated. Please click the link in your email.');
+      });
     };
-  }
-
-  function activateController($scope, $state, $stateParams, Error, UserFactory) {
-    Airbitz.ui.title('Activating your account');
-    Airbitz.ui.showAlert('', 'Activating account.', {
-      'showSpinner': true
-    });
-    UserFactory.activate($stateParams.email, $stateParams.token).then(function(b) {
-      Airbitz.ui.showAlert('', 'Account activated');
-      $state.go("dashboard");
-    }, function(b) {
-      Airbitz.ui.showAlert('', 'Unable to activate account.');
-      $state.go("pendingActivation");
-    });
+    $scope.changeEmail = function() {
+      Airbitz.ui.showAlert('', 'Removing old account...', {
+        'showSpinner': true
+      });
+      UserFactory.deleteUser('Wrong email address').then(function() {
+        Airbitz.ui.hideAlert();
+        UserFactory.clearUser();
+        Airbitz.core.clearData();
+        $state.go("signup");
+      }, function(e) {
+        Airbitz.ui.hideAlert();
+        var msg = 'Unable to change email address at this time..\n' + Error.errorMap(e);
+        Airbitz.ui.showAlert('', msg);
+      });
+    };
   }
 
   function dashboardController($scope, $sce, $state, Error, DataFactory, UserFactory, Prices) {
@@ -118,31 +130,31 @@
     // set variables that might be cached locally to make sure they load faster if available
     $scope.account = UserFactory.getUserAccount();
     $scope.userStatus = UserFactory.getUserAccountStatus();
-    // $scope.banks = UserFactory.getBanks();
+    $scope.banks = UserFactory.getBanks();
     $scope.wallets = UserFactory.getWallets();
 
     var showOpts = function(s) {
-      $scope.showOptions = !s.userCanTransact; // || $scope.banks.length == 0;
+      $scope.showOptions = !s.userCanTransact || $scope.banks.length == 0;
     };
-    showOpts($scope.userStatus);
+    showOpts($scope.account);
 
     Prices.setBuyQty(1).then(function() {
       return Prices.setSellQty(1);
     }).then(function() {
       return UserFactory.fetchAccount().then(function(account) {
         $scope.account = account;
+        showOpts($scope.account);
       }, function() {
         // Error, error
       });
     }).then(function() {
       return UserFactory.fetchUserAccountStatus().then(function(b) {
         $scope.userStatus = b;
-        showOpts($scope.userStatus);
       });
-    // }).then(function() {
-    //   return UserFactory.fetchBanks(function(b) {
-    //     $scope.banks = b;
-    //   });
+    }).then(function() {
+       return UserFactory.fetchBanks(function(b) {
+         $scope.banks = b;
+     });
     }).then(function() {
       return UserFactory.fetchWallets(function(b) {
         $scope.wallets = b;
@@ -169,7 +181,7 @@
       }
       if ($scope.userStatus.identityRejectedReason) {
         counter++;
-        msg += '<h5><strong>' + counter + "</strong>." + 
+        msg += '<h5><strong>' + counter + "</strong>." +
           " Identity documents rejected because "
             + rejectMap($scope.userStatus.identityRejectedReason)
             + ".</h5>";
@@ -182,7 +194,7 @@
       }
       if ($scope.userStatus.addressRejectedReason) {
         counter++;
-        msg += '<h5><strong>' + counter + "</strong>." + 
+        msg += '<h5><strong>' + counter + "</strong>." +
           " Address documents rejected because "
             + rejectMap($scope.userStatus.addressRejectedReason)
             + ".</h5>";
@@ -193,10 +205,6 @@
         counter++;
         msg += '<h5><strong>' + counter + "</strong>. Please verify your address.</h5>";
       }
-      // if ($scope.banks.length == 0) {
-      //   counter++;
-      //   msg += '<h5><strong>' + counter + "</strong>. Please add a bank account.</h5>";
-      // }
       if (msg !== '') {
         msg = '<h4 style="margin-top: 0;">To Buy or Sell Bitcoin:</h4>' + msg;
       }
@@ -204,8 +212,17 @@
     };
 
     $scope.userInformation = function() {
-      if ($scope.account.termsAgreedVersion == 1 || $scope.userStatus.userCanTransact) {
+      UserFactory.fetchAccount();
+      var account = UserFactory.getUserAccount();
+      if ($scope.account.verificationState == "Verified" || $scope.account.verificationProgressState == "Verified") {
+        Airbitz.ui.showAlert('', 'User information have already been verified. Cannot be resubmitted.');
+      //if ($scope.account.verificationState == "Verified") {
+//      if ($scope.account.verified) {
+  //    if (["Verified"].indexOf($scope.account.verificationState) > -1) {
+      } else if (account.verificationProgressState == "Exported") {
         Airbitz.ui.showAlert('', 'User information has been submitted. Cannot be resubmitted.');
+      } else if($scope.account.requiredDataSupplied) {
+        Airbitz.ui.showAlert('', 'User information has already been submitted.');
       } else {
         $state.go("userInformation");
       }
@@ -245,7 +262,18 @@
       $state.go('exchangeOrder', {'orderAction': 'buy'});
     };
     $scope.sell = function() {
-      Airbitz.ui.showAlert('', 'Sell is coming soon!');
+      UserFactory.fetchBanks();
+      var banks = UserFactory.getBanks();
+      if (banks.length == 0) {
+        Airbitz.ui.showAlert('', 'Please add a bank account.');
+        return;
+      }
+      if (!banks[0].verified) {
+        Airbitz.ui.showAlert('', 'Please wait until your bank account is verified.');
+        return;
+      }
+      DataFactory.getOrder(true);
+      $state.go('exchangeOrder', {'orderAction': 'sell'});
     };
     $scope.showAccountOptions = function() {
       $scope.showOptions = !$scope.showOptions;
@@ -254,12 +282,16 @@
 
   function userInformationController($scope, $state, Error, UserFactory) {
     Airbitz.ui.title('User Information');
+    $scope.maxDate = new Date();
+    $scope.maxDate.setYear($scope.maxDate.getYear() - 18 );
+    $scope.minDate = new Date();
+    $scope.minDate.setYear($scope.minDate.getYear() - 100 );
     $scope.account = UserFactory.getUserAccount();
     $scope.countries = UserFactory.getCountries();
-    UserFactory.fetchCountries().then(function(b) {
-      $scope.countries = b;
-      $scope.account.birthcountryObject = UserFactory.findCountry($scope.account.birthcountry);
-      $scope.account.addresscountryObject = UserFactory.findCountry($scope.account.addresscountry);
+    $scope.supportedCountries = UserFactory.getSupportedCountries();
+    UserFactory.fetchSupportedCountries().then(function(b) {
+      $scope.supportedCountries = b;
+      $scope.account.addresscountryObject = UserFactory.findSupportedCountry($scope.account.addresscountry);
     });
 
     $scope.cancel = function() {
@@ -286,17 +318,17 @@
     $scope.account = UserFactory.getUserAccount();
     $scope.primaryFile = '';
     $scope.secondaryFile = '';
-    UserFactory.fetchCountries().then(function(b) {
-      $scope.countries = b;
-      $scope.account.nationalityObject = UserFactory.findCountry($scope.account.birthcountry);
-    });
+    $scope.countries = UserFactory.getCountries();
+    $scope.account.nationalityObject = UserFactory.findCountry($scope.account.birthcountry);
 
     $scope.loadIdentityFront = function() {
       Airbitz.core.requestFile({
         success: function(data) {
-          $scope.$apply(function() {
-            $scope.primaryFile = 'data:image/jpeg;name:primaryFile.jpg;base64,' + data;
-          });
+          if (data) {
+            $scope.$apply(function() {
+              $scope.primaryFile = 'data:image/jpeg;name:primaryFile.jpg;base64,' + data;
+            });
+          }
         },
         error: function() { }
       });
@@ -305,9 +337,11 @@
     $scope.loadIdentityBack = function() {
       Airbitz.core.requestFile({
         success: function(data) {
-          $scope.$apply(function() {
-            $scope.secondaryFile = 'data:image/jpeg;name:secondaryFile.jpg;base64,' + data;
-          });
+          if (data) {
+            $scope.$apply(function() {
+              $scope.secondaryFile = 'data:image/jpeg;name:secondaryFile.jpg;base64,' + data;
+            });
+          }
         },
         error: function() { }
       });
@@ -338,16 +372,19 @@
     Airbitz.ui.title('Address Verification');
     $scope.account = UserFactory.getUserAccount();
     $scope.proofFile = '';
-    UserFactory.fetchCountries().then(function(b) {
-      $scope.countries = b;
-      $scope.account.addresscountryObject = UserFactory.findCountry($scope.account.addresscountry);
+    $scope.supportedCountries = UserFactory.getSupportedCountries();
+    UserFactory.fetchSupportedCountries().then(function(b) {
+      $scope.supportedCountries = b;
+      $scope.account.addresscountryObject = UserFactory.findSupportedCountry($scope.account.addresscountry);
     });
     $scope.loadProofFile = function() {
       Airbitz.core.requestFile({
         success: function(data) {
-          $scope.$apply(function() {
-            $scope.proofFile = 'data:image/jpeg;name:primaryFile.jpg;base64,' + data;
-          });
+          if (data) {
+            $scope.$apply(function() {
+              $scope.proofFile = 'data:image/jpeg;name:primaryFile.jpg;base64,' + data;
+            });
+          }
         },
         error: function() { }
       });
@@ -379,17 +416,19 @@
 
   function editBankController($scope, $state, Error, UserFactory) {
     Airbitz.ui.title('Bank Account');
-    UserFactory.fetchCountries().then(function(b) {
-      $scope.countries = b;
+    UserFactory.fetchSupportedCountries().then(function(b) {
+      $scope.supportedCountries = b;
     });
 
     $scope.bankstatement = '';
     $scope.loadBankStatement = function() {
       Airbitz.core.requestFile({
         success: function(data) {
-          $scope.$apply(function() {
-            $scope.bankstatement = 'data:image/jpeg;name:primaryFile.jpg;base64,' + data;
-          });
+          if (data) {
+            $scope.$apply(function() {
+              $scope.bankstatement = 'data:image/jpeg;name:primaryFile.jpg;base64,' + data;
+            });
+          }
         },
         error: function() { }
       });
@@ -440,9 +479,11 @@
     Airbitz.ui.showAlert('', 'Loading transactions...', {
       'showSpinner': true
     });
+    $scope.showEmpty = false;
     DataFactory.getFundsLedger().then(function(funds) {
       Airbitz.ui.hideAlert();
       $scope.funds = funds;
+      $scope.showEmpty = funds.length == 0;
     }, function() {
       Airbitz.ui.showAlert('', 'Error fetching transactions.');
       $state.go('dashboard');
@@ -464,7 +505,7 @@
         link: function(scope, element, attrs) {
             var model = $parse(attrs.fileModel);
             var modelSetter = model.assign;
-            
+
             element.bind('change', function(){
                 scope.$apply(function(){
                     modelSetter(scope, element[0].files[0]);

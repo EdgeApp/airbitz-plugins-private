@@ -18,7 +18,11 @@ var first_load = 1;
 var force_refresh = 1;
 var min_price_rate = 1;
 var refund_enabled = 0;
-var new_account = false;
+var affiliate_address = null;
+var affiliate_fee_percent = 0;
+
+// TODO: get this number from the core
+var DUST = 4000;
 
 // Purchases over this amount are given a popup warning as 1 confirmation is required
 // before card is available
@@ -115,6 +119,12 @@ function logStats(event, brand, amount) {
     s['user'] = Account.username.substr(Account.username.length - 8);
     s['brand'] = brand;
     s['usd'] = amount;
+    if (affiliate_address && affiliate_address.length >= 8) {
+        s['afaddr'] = affiliate_address.substr(affiliate_address.length - 8);
+    } else {
+        s['afaddr'] = "none";
+    }
+
     $.ajax({
         headers: {
             'Content-Type' : 'application/json',
@@ -170,6 +180,7 @@ var Account = {
             Airbitz.ui.debugLevel(1,"Account created successfully");
         },function(){
             Airbitz.ui.showAlert("Account creation error", "Error creating account. Please try again later");
+            Airbitz.ui.exit()
         });
     },
 
@@ -206,7 +217,21 @@ var Account = {
             Account.logged_in.resolve(r);
         }, function(error) {
             Airbitz.ui.showAlert("Login error", "Error logging into account. Please try again later");
+            Airbitz.ui.exit();
         });
+        var affiliateInfo = Airbitz.core.getAffiliateInfo();
+        if (affiliateInfo
+              && affiliateInfo["affiliate_address"] 
+              && affiliateInfo["affiliate_address"].length > 20) {
+            for (var ic in affiliateInfo["objects"]) {
+                if (affiliateInfo["objects"][ic]["key"] == "gift_card_affiliate_fee") {
+                    affiliate_address = affiliateInfo["affiliate_address"];
+                    affiliate_fee_percent = affiliateInfo["objects"][ic]["value"] / 100;
+                    break;
+                }
+            }
+        }
+
     },
     updateBalance: function() {
         this.getInfo("balances?currency=USD", function(balances) {
@@ -631,8 +656,14 @@ var Account = {
             if (large_value_threshold < denomination) {
                 Airbitz.ui.showAlert("High Value Card", "You are purchasing a card over $50 in value. This requires one bitcoin network confirmation before your card will be available and may take over 10 minutes.");
             }
-            Airbitz.core.requestSpend(Account.abWallet,
-                    toAddr, amt, 0, {
+            var affiliateAmount = amt*affiliate_fee_percent;
+            var tmpAddress = affiliate_address;
+            if (affiliateAmount <= DUST) {
+              affiliateAmount = 0;
+              tmpAddress = null;
+            }
+            Airbitz.core.requestSpend2(Account.abWallet,
+                    toAddr, amt, tmpAddress, affiliateAmount, 0, {
                         label: brand,
                         category: category,
                         notes: brand + " $" + String(denomination) + " gift card.",
@@ -726,99 +757,121 @@ Card.prototype.mockBal = function(bal) {
 var user = Object.create(Account);
 
 Airbitz.core.setWalletChangeListener(updateWallet);
-//Airbitz.core.clearData(); fold-2015-11-18-JszcOVECE0iHn5
 Account.username = Airbitz.core.readData("fold-username");
 Account.pass = Airbitz.core.readData("fold-pass");
 Airbitz.ui.showAlert('', 'Loading account...', {
     'showSpinner': true
 });
 
-if(!(typeof Account.username === 'undefined' || Account.username == null)) {
-    Account.creds = {"users": [{
-        "username": Account.username,
-        "password": Account.pass
-    }]};
-    Airbitz.ui.debugLevel(1,"User pulled from memory.");
-    user.exists.resolve();
-} else {
-    user.create();
-    new_account = true;
-}
-$.when(user.exists).done(function(data) {
-    user.login();
-});
-$(function() {
-    $.when(user.logged_in).done(function(data) {
-        Airbitz.ui.debugLevel(1,"Logged in");
-        Account.owl.owlCarousel({ // Activate owl Carousel for cards.
-            //navigation : true, // Show next and prev buttons
-            slideSpeed : 300,
-            paginationSpeed : 400,
-            singleItem:true,
-            afterMove: function(elem) {
-                var current = this.currentItem;
-                var card = elem.find(".owl-item").eq(current).find(".card-balance-amt").attr('card');
-                Airbitz.ui.debugLevel(1,"Current card is " + card);
-                Account.current_card_id = card;
-                Account.pingCard(card);
-            }
+function main() {
+  if(!(typeof Account.username === 'undefined' || Account.username == null)) {
+      Account.creds = {"users": [{
+          "username": Account.username,
+          "password": Account.pass
+      }]};
+      Airbitz.ui.debugLevel(1,"User pulled from memory.");
+      user.exists.resolve();
+  } else {
+      user.create();
+  }
+  $.when(user.exists).done(function(data) {
+      user.login();
+  });
+  $.when(user.logged_in).done(function(data) {
+      Airbitz.ui.debugLevel(1,"Logged in");
+      Account.owl.owlCarousel({ // Activate owl Carousel for cards.
+          //navigation : true, // Show next and prev buttons
+          slideSpeed : 300,
+          paginationSpeed : 400,
+          singleItem:true,
+          afterMove: function(elem) {
+              var current = this.currentItem;
+              var card = elem.find(".owl-item").eq(current).find(".card-balance-amt").attr('card');
+              Airbitz.ui.debugLevel(1,"Current card is " + card);
+              Account.current_card_id = card;
+              Account.pingCard(card);
+          }
 
-            // "singleItem:true" is a shortcut for:
-            // items : 1,
-            // itemsDesktop : false,
-            // itemsDesktopSmall : false,
-            // itemsTablet: false,
-            // itemsMobile : false
-        });
-        Account.setLoadingCard();
+          // "singleItem:true" is a shortcut for:
+          // items : 1,
+          // itemsDesktop : false,
+          // itemsDesktopSmall : false,
+          // itemsTablet: false,
+          // itemsMobile : false
+      });
+      Account.setLoadingCard();
 
 //      Account.logRefunds();
-        Airbitz.core.selectedWallet({
-            success: updateWallet,
-            error: function() {
-                Airbitz.ui.debugLevel(1,"Could not get selected wallet");
-                Airbitz.ui.showAlert("Wallet Error", "Error could not select wallet.");
-            }
-        });
+      Airbitz.core.selectedWallet({
+          success: function(wallet) {
+            updateWallet(wallet);
+            var withdrawal_address = Airbitz.core.readData("withdrawal-address");
 
-        // If this is a new account. Set an initial refund address in case any purchases get botched
-        if (new_account) {
-            createAddress(Account.abWallet, brand, 0, 0, category, "Refunded " + brand + " gift card.",
-                function(data) {
+            // If this is a new account. Set an initial refund address in case any purchases get botched
+            if (!withdrawal_address || withdrawal_address.length < 20) {
+                createAddress(Account.abWallet, brand, 0, 0, category, "Refunded " + brand + " gift card.", function(data) {
                     Account.updateWAddr(data["address"], function() {
+                        Airbitz.ui.debugLevel(1,"Setting withdrawal address:" + data["address"]);
+                        Airbitz.core.writeData("withdrawal-address", data["address"]);
                     }, function() {
+                        Airbitz.ui.debugLevel(1,"WARNING: could not set withdrawal address");
+                        Airbitz.ui.debugLevel(1,data);
                     });
                 }, function(data) {
                     Airbitz.ui.debugLevel(1,data);
                 });
-        }
+            } else {
+                Airbitz.ui.debugLevel(1,"Withdrawal address already set:" + withdrawal_address);
+            }
+          },
+          error: function() {
+              Airbitz.ui.debugLevel(1,"Could not get selected wallet");
+              Airbitz.ui.showAlert("Wallet Error", "Error could not select wallet.");
+          }
+      });
 
+      Airbitz.ui.debugLevel(1,"Updating UI");
+      Airbitz.ui.hideAlert();
 
-        Airbitz.ui.debugLevel(1,"Updating UI");
-        Airbitz.ui.hideAlert();
+      updateAllCards();
+      toggleUi();
 
-        updateAllCards();
-        toggleUi();
+      user.getInfo("profile", function(response) {
+          //Airbitz.ui.debugLevel(1,response);
+          //Airbitz.ui.debugLevel(1,response["logged_in"]);
+          user.getInfo("orders", function(response) {
+              //Airbitz.ui.debugLevel(1,response);
+          });
+          // Done loading.
+      });
+  });
+  // UI stuff
+  Airbitz.ui.debugLevel(1,"logo: " + logo_url);
+  $(".brand-name").text(brand);
 
-        user.getInfo("profile", function(response) {
-            //Airbitz.ui.debugLevel(1,response);
-            //Airbitz.ui.debugLevel(1,response["logged_in"]);
-            user.getInfo("orders", function(response) {
-                //Airbitz.ui.debugLevel(1,response);
-            });
-            // Done loading.
-        });
-    });
-    // UI stuff
-    Airbitz.ui.debugLevel(1,"logo: " + logo_url);
-    $(".brand-name").text(brand);
+  if (server_json_error) {
+      Airbitz.ui.showAlert("Server Response Error", "Error in Server response. Please contact support");
+      Airbitz.ui.debugLevel(1,"Error in Server response. Please contact support");
+  }
 
-    if (server_json_error) {
-        Airbitz.ui.showAlert("Server Response Error", "Error in Server response. Please contact support");
-        Airbitz.ui.debugLevel(1,"Error in Server response. Please contact support");
-    }
+  $(".brand-logo").attr("src", logo_url);
+  $(".user-creds").html("Username: " + Account.username  + "<br>Password: " + Account.pass);
+  $(".support-mail-link").html("<a href=\"mailto:support@foldapp.com?subject=Support%20Requested&body=" + "Username:" + Account.username + "\">support@foldapp.com.</a>");
+}
 
-    $(".brand-logo").attr("src", logo_url);
-    $(".user-creds").html("Username: " + Account.username  + "<br>Password: " + Account.pass);
-    $(".support-mail-link").html("<a href=\"mailto:support@foldapp.com?subject=Support%20Requested&Body=" + "Username:" + Account.username + "\">support@foldapp.com.</a>");
+window.onerror = function(message) {
+  Airbitz.ui.showAlert("Internal error", "Service is unavailable at this time. Please try again later.");
+  Airbitz.ui.exit();
+  Airbitz.ui.debugLevel(1, message);
+}
+
+$(function() {
+  try {
+    main();
+  } catch (e) {
+    // handle any rogue exceptions
+    Airbitz.ui.showAlert("Internal error", "Service is unavailable at this time. Please try again later.");
+    Airbitz.ui.exit();
+    Airbitz.ui.debugLevel(1, e.toString());
+  }
 });

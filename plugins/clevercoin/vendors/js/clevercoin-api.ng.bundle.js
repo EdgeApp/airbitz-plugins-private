@@ -129,7 +129,7 @@ var CleverCoin = (function () {
         var signatureParameters = {};
         var nonceArray = _microtime().split(' ');
         var nonce = nonceArray[1] + _pad(nonceArray[0].substring(2,6),6);
-        
+
         headers['X-CleverAPI-Key'] = signatureParameters['X-CleverAPI-Key'] = key;
         headers['X-CleverAPI-Nonce'] = signatureParameters['X-CleverAPI-Nonce'] = nonce;
         signatureParameters['X-CleverAPI-Request'] = method + ' ' + path;
@@ -173,6 +173,17 @@ var CleverCoin = (function () {
         'data': data,
         'callback': callback,
         'auth_as_provider': true
+      });
+    },
+
+    deleteUser: function(reason, callback) {
+      var data = {
+        'reason': reason
+      };
+      return this._request(true, '/account', {
+        'method': 'DELETE',
+        'data': data,
+        'callback': callback
       });
     },
 
@@ -351,6 +362,19 @@ var CleverCoin = (function () {
 
     depositSepa: function(callback) {
       return this._request(true, '/euro/deposit/sepa', {
+        'callback': callback
+      });
+    },
+
+    withdrawalSepa: function(amount, iban, sepaDescription, callback) {
+      var data = {
+        'amount': amount,
+        'toIBAN': iban,
+        'sepadescription': sepaDescription
+      };
+      return this._request(true, '/euro/withdrawal', {
+        'method': 'POST',
+        'data': data,
         'callback': callback
       });
     },
